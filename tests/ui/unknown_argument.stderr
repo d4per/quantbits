@@ -1,0 +1,5 @@
+error: unknown argument, expected `range = MIN..MAX`, `range = MIN..=MAX` or `wrap`
+ --> tests/ui/unknown_argument.rs:3:15
+  |
+3 |     #[bits(3, rnage = 0.0..1.0)]
+  |               ^^^^^

@@ -1,0 +1,23 @@
+error[E0080]: evaluation of constant value failed
+ --> tests/ui/infinite_range.rs:3:23
+  |
+3 |     #[bits(4, range = f64::NEG_INFINITY..f64::INFINITY)]
+  |                       ^^^ the evaluated program panicked at 'quantbits: field `infinite` requires finite MIN < MAX in `f64::NEG_INFINITY..f64::INFINITY`', $DIR/tests/ui/infinite_range.rs:3:23
+  |
+  = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `::core::assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+ --> tests/ui/infinite_range.rs:5:23
+  |
+5 |     #[bits(4, range = -f64::MAX..f64::MAX)]
+  |                       ^ the evaluated program panicked at 'quantbits: field `too_wide` requires finite MIN < MAX in `-f64::MAX..f64::MAX`', $DIR/tests/ui/infinite_range.rs:5:23
+  |
+  = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `::core::assert` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0080]: evaluation of constant value failed
+ --> tests/ui/infinite_range.rs:7:23
+  |
+7 |     #[bits(4, range = 0.0..1e39)]
+  |                       ^^^ the evaluated program panicked at 'quantbits: field `too_large_for_f32` requires finite MIN < MAX in `0.0..1e39`', $DIR/tests/ui/infinite_range.rs:7:23
+  |
+  = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `::core::assert` (in Nightly builds, run with -Z macro-backtrace for more info)

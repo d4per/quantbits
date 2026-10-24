@@ -1,0 +1,17 @@
+error: number of bits must be 1..=8 for `u8`
+ --> tests/ui/several_errors_at_once.rs:3:12
+  |
+3 |     #[bits(9)]
+  |            ^
+
+error: number of bits must be 1..=16 for `i16`
+ --> tests/ui/several_errors_at_once.rs:5:12
+  |
+5 |     #[bits(0)]
+  |            ^
+
+error: float fields require `#[bits(N, range = MIN..MAX)]`
+ --> tests/ui/several_errors_at_once.rs:7:8
+  |
+7 |     c: f32,
+  |        ^^^

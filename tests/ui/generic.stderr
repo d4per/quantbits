@@ -1,0 +1,5 @@
+error: `#[bitfields]` does not support generic types
+ --> tests/ui/generic.rs:2:9
+  |
+2 | struct S<T> {
+  |         ^^^

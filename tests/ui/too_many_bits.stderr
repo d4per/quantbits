@@ -1,0 +1,5 @@
+error: number of bits must be 1..=8 for `u8`
+ --> tests/ui/too_many_bits.rs:3:12
+  |
+3 |     #[bits(9)]
+  |            ^

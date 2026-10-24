@@ -1,0 +1,11 @@
+error: variants of a `BitEnum` cannot have fields
+ --> tests/ui/enum_with_fields.rs:5:6
+  |
+5 |     A(u8),
+  |      ^^^^
+
+error: variants of a `BitEnum` cannot have fields
+ --> tests/ui/enum_with_fields.rs:6:7
+  |
+6 |     B { x: u8 },
+  |       ^^^^^^^^^

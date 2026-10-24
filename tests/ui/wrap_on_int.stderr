@@ -1,0 +1,5 @@
+error: `wrap` only applies to f32/f64 fields
+ --> tests/ui/wrap_on_int.rs:3:15
+  |
+3 |     #[bits(8, wrap)]
+  |               ^^^^

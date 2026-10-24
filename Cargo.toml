@@ -1,0 +1,30 @@
+[workspace]
+members = [".", "quantbits-derive"]
+# Picks dependency versions that work with `rust-version` (MSRV).
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# `resolver = "3"` ends up in the published manifests and needs Cargo 1.84.
+rust-version = "1.84"
+license = "MIT"
+
+[package]
+name = "quantbits"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Packed bit fields of arbitrary width: integers, bools, enums and floats quantized to a range"
+license.workspace = true
+readme = "README.md"
+keywords = ["bitfield", "bit-packing", "quantization", "no-std", "serialization"]
+categories = ["encoding", "data-structures", "no-std", "no-std::no-alloc", "game-development"]
+
+[dependencies]
+# Exact version: the generated code uses `quantbits::__private`, so both crates are released together.
+quantbits-derive = { path = "quantbits-derive", version = "=0.1.0" }
+
+[dev-dependencies]
+rustversion = "1"
+trybuild = "1"

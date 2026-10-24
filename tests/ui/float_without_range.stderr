@@ -1,0 +1,5 @@
+error: float fields require `range = MIN..MAX` or `range = MIN..=MAX`
+ --> tests/ui/float_without_range.rs:3:5
+  |
+3 |     #[bits(4)]
+  |     ^^^^^^^^^^

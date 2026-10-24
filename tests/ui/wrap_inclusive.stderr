@@ -1,0 +1,5 @@
+error: `wrap` requires a half-open range `MIN..MAX`, since MIN and MAX are the same point when values wrap around
+ --> tests/ui/wrap_inclusive.rs:3:34
+  |
+3 |     #[bits(8, range = 0.0..=1.0, wrap)]
+  |                                  ^^^^

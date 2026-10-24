@@ -1,0 +1,5 @@
+error: a bool field is always 1 bit
+ --> tests/ui/bool_bits.rs:3:12
+  |
+3 |     #[bits(2)]
+  |            ^

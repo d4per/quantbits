@@ -1,0 +1,5 @@
+error: unsupported type, use bool, u8–u64, i8–i64, f32, f64 or a type with `#[derive(quantbits::BitEnum)]`
+ --> tests/ui/unsupported_type.rs:3:8
+  |
+3 |     a: u128,
+  |        ^^^^

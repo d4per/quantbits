@@ -1,0 +1,11 @@
+error: field `set_a` generates `set_a`, which already comes from field `a`
+ --> tests/ui/name_collision.rs:6:5
+  |
+6 |     set_a: u8,
+  |     ^^^^^
+
+error: field `new` generates `new`, which already comes from a built-in method or constant
+ --> tests/ui/name_collision.rs:7:5
+  |
+7 |     new: bool,
+  |     ^^^

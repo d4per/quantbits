@@ -1,0 +1,5 @@
+error: float fields require `#[bits(N, range = MIN..MAX)]`
+ --> tests/ui/float_without_bits.rs:3:8
+  |
+3 |     a: f32,
+  |        ^^^

@@ -1,0 +1,5 @@
+error: `range` only applies to f32/f64 fields
+ --> tests/ui/range_on_int.rs:3:23
+  |
+3 |     #[bits(8, range = 0.0..1.0)]
+  |                       ^^^^^^^^

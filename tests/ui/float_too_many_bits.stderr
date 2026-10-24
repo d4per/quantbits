@@ -1,0 +1,5 @@
+error: number of bits must be 1..=64 for floats
+ --> tests/ui/float_too_many_bits.rs:3:12
+  |
+3 |     #[bits(65, range = 0.0..1.0)]
+  |            ^^

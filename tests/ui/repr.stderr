@@ -1,0 +1,5 @@
+error: `#[bitfields]` sets `#[repr(transparent)]` itself
+ --> tests/ui/repr.rs:2:1
+  |
+2 | #[repr(C)]
+  | ^^^^^^^^^^

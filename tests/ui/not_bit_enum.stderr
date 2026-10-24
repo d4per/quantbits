@@ -1,0 +1,5 @@
+error[E0277]: the trait bound `String: BitEnum` is not satisfied
+ --> tests/ui/not_bit_enum.rs:4:8
+  |
+4 |     s: String,
+  |        ^^^^^^ the trait `BitEnum` is not implemented for `String`

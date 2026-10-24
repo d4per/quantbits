@@ -1,0 +1,5 @@
+error: custom types require `#[bits(N)]`, e.g. an enum with `#[derive(quantbits::BitEnum)]`
+  --> tests/ui/custom_without_bits.rs:11:8
+   |
+11 |     e: E,
+   |        ^

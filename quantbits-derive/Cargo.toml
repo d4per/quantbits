@@ -1,0 +1,16 @@
+[package]
+name = "quantbits-derive"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Procedural macros for quantbits"
+license.workspace = true
+readme = "README.md"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "3", features = ["full"] }
