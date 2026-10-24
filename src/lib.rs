@@ -238,7 +238,8 @@
 //! code, e.g. for more bits than the type holds, floats without `range`,
 //! `MIN >= MAX` or a non-finite range, `wrap` with a closed range, an enum
 //! that does not fit in its field or lacks `#[fallback]`, and colliding
-//! generated names. See `tests/ui/` for every case and the exact messages.
+//! generated names. See [`tests/ui/`](https://github.com/d4per/quantbits/tree/master/tests/ui)
+//! for every case and the exact messages.
 
 #![no_std]
 

@@ -9,6 +9,7 @@ edition = "2021"
 # `resolver = "3"` ends up in the published manifests and needs Cargo 1.84.
 rust-version = "1.84"
 license = "MIT"
+repository = "https://github.com/d4per/quantbits"
 
 [package]
 name = "quantbits"
@@ -17,6 +18,7 @@ edition.workspace = true
 rust-version.workspace = true
 description = "Packed bit fields of arbitrary width: integers, bools, enums and floats quantized to a range"
 license.workspace = true
+repository.workspace = true
 readme = "README.md"
 keywords = ["bitfield", "bit-packing", "quantization", "no-std", "serialization"]
 categories = ["encoding", "data-structures", "no-std", "no-std::no-alloc", "game-development"]
