@@ -232,6 +232,96 @@
 //!
 //! [`BitEnum`] can also be implemented by hand, e.g. for a newtype.
 //!
+//! ## Packed vectors
+//!
+//! For many values of the same kind, [`PackedSlice`], [`PackedSliceMut`] and
+//! `PackedVec` store each value in exactly as many bits as it needs, back to
+//! back, so 1000 13-bit integers take 1625 bytes. The element type is a
+//! [`Codec`]:
+//!
+//! | Codec                          | Values                                               |
+//! |--------------------------------|------------------------------------------------------|
+//! | [`Int<T, N>`](Int)             | `N`-bit integers stored as `T` (`u8`–`u64`, `i8`–`i64`) |
+//! | `bool`                         | 1 bit each                                           |
+//! | an enum with `#[derive(BitEnum)]` | `BITS` bits each                                   |
+//! | a `#[bitfields]` struct        | `USED_BITS` bits each, if at most 64                 |
+//! | a type declared with [`codec`] | anything a field can hold, with the same arguments as `#[bits(...)]` |
+//!
+//! `PackedVec` is a growable vector and needs the `alloc` feature
+//! (`quantbits = { version = "0.1", features = ["alloc"] }`). The slices work
+//! on a borrowed byte buffer without an allocator.
+//!
+//! ```
+//! # #[cfg(feature = "alloc")] {
+//! use quantbits::{codec, Int, PackedVec};
+//!
+//! #[codec(7, range = -2.0..=3.0)]
+//! pub type Pan = f32; // 7-bit floats from -2.0 to 3.0
+//!
+//! let mut ids: PackedVec<Int<u16, 13>> = PackedVec::new();
+//! let mut pans: PackedVec<Pan> = PackedVec::new();
+//! for i in 0..1000 {
+//!     ids.push(i * 8);
+//!     pans.push(i as f32 / 200.0 - 2.0);
+//! }
+//! assert_eq!(ids.get(999), Some(7992));
+//! assert_eq!(pans.get(0), Some(-2.0));
+//! assert_eq!(Pan::STEP, 5.0 / 127.0);
+//! assert_eq!(ids.as_bytes().len(), 1625);
+//! assert_eq!(pans.as_bytes().len(), 875);
+//! # }
+//! ```
+//!
+//! Values that do not fit behave as for fields, see
+//! [Out-of-range values](#out-of-range-values). Float codecs also have
+//! `set_stochastic`, `add_stochastic` and `sub_stochastic`. `as_bytes` and
+//! `from_bytes` use the same platform-independent layout as `#[bitfields]`
+//! structs.
+//!
+//! ## Struct of arrays
+//!
+//! `#[bitfields(columns = Name)]` additionally generates the type `Name`, which
+//! stores many values of the struct with one packed column per field (needs
+//! the `alloc` feature). Code that reads a single field only touches that
+//! field's column:
+//!
+//! ```
+//! # #[cfg(feature = "alloc")] {
+//! use quantbits::bitfields;
+//!
+//! #[bitfields(columns = Particles)]
+//! #[derive(Clone, Copy, Debug)]
+//! pub struct Particle {
+//!     #[bits(12, range = 0.0..1024.0)] pub x: f32,
+//!     #[bits(12, range = 0.0..1024.0)] pub y: f32,
+//!     #[bits(4)]                        pub kind: u8,
+//! }
+//!
+//! let mut particles = Particles::new();
+//! particles.push(Particle::new().with_x(10.0).with_y(20.0).with_kind(3));
+//! particles.push(Particle::new().with_x(30.0).with_kind(5));
+//! particles.set_y(1, 40.0);
+//!
+//! assert_eq!(particles.x(1), 30.0);
+//! assert_eq!(particles.get(1).unwrap().y(), 40.0);
+//! assert_eq!(particles.kind_iter().max(), Some(5));
+//! assert_eq!(particles.x_iter().sum::<f32>(), 40.0);
+//! # }
+//! ```
+//!
+//! | Generated                                  | Meaning                                         |
+//! |--------------------------------------------|-------------------------------------------------|
+//! | `new`, `with_capacity`, `len`, `is_empty`, `reserve`, `clear`, `truncate` | as for `Vec`     |
+//! | `push(v)`, `pop()`, `get(i)`, `set(i, v)`, `iter()` | whole rows, as values of the struct    |
+//! | `x(i)`, `set_x(i, v)`, `try_set_x(i, v)`   | one field of row `i`, like the struct's accessors |
+//! | `set_x_stochastic(i, v, rng)`, `add_x_stochastic(i, d, rng)`, `sub_x_stochastic(i, d, rng)` | floats |
+//! | `x_iter()`                                 | the field of every row                          |
+//! | `x_column()`                               | the column's raw bits as a [`PackedSlice`]      |
+//!
+//! It also implements `Clone`, `Default`, `PartialEq`, `Eq`, `Hash`,
+//! `Extend`, `FromIterator`, and `Debug` if the struct derives it. Methods
+//! taking an index panic if it is out of bounds, except `get`.
+//!
 //! ## Compile errors
 //!
 //! Invalid declarations produce errors that point at the right place in the
@@ -246,7 +336,20 @@
 // Makes `::quantbits::...` in generated code work inside this crate as well.
 extern crate self as quantbits;
 
-pub use quantbits_derive::{bitfields, BitEnum};
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+pub use quantbits_derive::{bitfields, codec, BitEnum};
+
+mod codec;
+mod packed;
+#[cfg(feature = "alloc")]
+mod vec;
+
+pub use codec::{Codec, Int, StochasticCodec};
+pub use packed::{Iter, PackedSlice, PackedSliceMut};
+#[cfg(feature = "alloc")]
+pub use vec::PackedVec;
 
 /// The distance between two adjacent levels of a float field.
 ///
@@ -442,6 +545,12 @@ pub mod __private {
     #[inline(always)]
     pub const fn out_of_range(field: &'static str, bits: u32) -> super::OutOfRange {
         super::OutOfRange { field, bits }
+    }
+
+    #[cold]
+    #[track_caller]
+    pub fn index_out_of_bounds(index: usize, len: usize) -> ! {
+        panic!("index out of bounds: the len is {len} but the index is {index}")
     }
 
     /// Whether `min..max` (or `min..=max`) gives finite levels: `min < max`

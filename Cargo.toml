@@ -16,12 +16,19 @@ name = "quantbits"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "Packed bit fields of arbitrary width: integers, bools, enums and floats quantized to a range"
+description = "Packed bit fields and vectors of arbitrary width: integers, bools, enums and floats quantized to a range"
 license.workspace = true
 repository.workspace = true
 readme = "README.md"
 keywords = ["bitfield", "bit-packing", "quantization", "no-std", "serialization"]
 categories = ["encoding", "data-structures", "no-std", "no-std::no-alloc", "game-development"]
+
+[features]
+# `PackedVec` and the `columns` option of `#[bitfields]`.
+alloc = []
+
+[package.metadata.docs.rs]
+all-features = true
 
 [dependencies]
 # Exact version: the generated code uses `quantbits::__private`, so both crates are released together.
@@ -30,3 +37,11 @@ quantbits-derive = { path = "quantbits-derive", version = "=0.1.0" }
 [dev-dependencies]
 rustversion = "1"
 trybuild = "1"
+
+[[test]]
+name = "vec"
+required-features = ["alloc"]
+
+[[test]]
+name = "columns"
+required-features = ["alloc"]

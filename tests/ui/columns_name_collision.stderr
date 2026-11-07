@@ -1,0 +1,11 @@
+error: field `len` generates `Table::len`, which already comes from a built-in method
+ --> tests/ui/columns_name_collision.rs:6:5
+  |
+6 |     len: u8,
+  |     ^^^
+
+error: field `a_iter` generates `Table::a_iter`, which already comes from field `a`
+  --> tests/ui/columns_name_collision.rs:10:5
+   |
+10 |     a_iter: u8,
+   |     ^^^^^^

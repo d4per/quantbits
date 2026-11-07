@@ -1,0 +1,5 @@
+error: unknown argument, expected `columns = Name`
+ --> tests/ui/bitfields_unknown_argument.rs:3:13
+  |
+3 | #[bitfields(rows = Table)]
+  |             ^^^^
