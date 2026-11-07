@@ -2,9 +2,9 @@
 
 use core::marker::PhantomData;
 
-#[cfg(doc)]
-use crate::BitEnum;
 use crate::OutOfRange;
+
+// Separate from the import above: rustfmt versions disagree on how to sort the two.
 use crate::__private::{fits_signed, fits_unsigned, sign_extend};
 
 /// How a value is stored in a fixed number of bits, for the packed containers
@@ -12,7 +12,7 @@ use crate::__private::{fits_signed, fits_unsigned, sign_extend};
 ///
 /// Implemented for `bool`, [`Int`], every enum with `#[derive(BitEnum)]`,
 /// every `#[bitfields]` struct of at most 64 bits, and the types declared with
-/// [`#[codec]`](crate::codec). For a type with a hand-written [`BitEnum`]
+/// [`#[codec]`](crate::codec). For a type with a hand-written [`BitEnum`](crate::BitEnum)
 /// implementation, declare a codec with `#[codec(N)] type Name = MyType;`.
 ///
 /// ```
