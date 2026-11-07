@@ -53,7 +53,7 @@ dependencies = [
 
 [[package]]
 name = "quantbits"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "quantbits-derive",
  "rustversion",
@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "quantbits-derive"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proc-macro2",
  "quote",

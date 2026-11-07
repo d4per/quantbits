@@ -1,0 +1,51 @@
+error: `#[codec]` must be put on a type alias, e.g. `pub type Level = f32;`
+ --> tests/ui/codec_errors.rs:4:1
+  |
+4 | struct NotAnAlias;
+  | ^^^^^^^^^^^^^^^^^^
+
+error: `#[codec]` needs the number of bits, e.g. `#[codec(5)]` or `#[codec(7, range = -1.0..=1.0)]`
+ --> tests/ui/codec_errors.rs:6:1
+  |
+6 | #[codec]
+  | ^^^^^^^^
+  |
+  = note: this error originates in the attribute macro `codec` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: float codecs require `range = MIN..MAX` or `range = MIN..=MAX`
+ --> tests/ui/codec_errors.rs:9:9
+  |
+9 | #[codec(5)]
+  |         ^
+
+error: a bool codec is always 1 bit
+  --> tests/ui/codec_errors.rs:12:9
+   |
+12 | #[codec(2)]
+   |         ^
+
+error: `range` only applies to f32/f64 codecs
+  --> tests/ui/codec_errors.rs:15:20
+   |
+15 | #[codec(5, range = 0.0..1.0)]
+   |                    ^^^^^^^^
+
+error: number of bits must be 1..=8 for `u8`
+  --> tests/ui/codec_errors.rs:18:9
+   |
+18 | #[codec(9)]
+   |         ^
+
+error: `#[codec]` does not support generic types
+  --> tests/ui/codec_errors.rs:22:13
+   |
+22 | type Generic<T> = T;
+   |             ^^^
+
+error[E0080]: evaluation of constant value failed
+  --> tests/ui/codec_errors.rs:24:20
+   |
+24 | #[codec(4, range = 1.0..1.0)]
+   |                    ^^^ the evaluated program panicked at 'quantbits: `EmptyRange` requires finite MIN < MAX in `1.0..1.0`', $DIR/tests/ui/codec_errors.rs:24:20
+   |
+   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `::core::assert` (in Nightly builds, run with -Z macro-backtrace for more info)

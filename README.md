@@ -38,6 +38,26 @@ assert_eq!(core::mem::size_of::<Packet>(), 3);
 
 Put `#[bitfields]` *before* `#[derive(...)]`.
 
+For many values, `PackedVec` stores each in exactly the bits it needs, and
+`#[bitfields(columns = Name)]` generates a struct of arrays with one packed
+column per field (both need the `alloc` feature):
+
+```rust
+use quantbits::{codec, Int, PackedVec};
+
+#[codec(7, range = -2.0..=3.0)]
+pub type Pan = f32; // 7-bit floats from -2.0 to 3.0
+
+let mut ids: PackedVec<Int<u16, 13>> = PackedVec::new();
+let mut pans: PackedVec<Pan> = PackedVec::new();
+for i in 0..1000 {
+    ids.push(i * 8);
+    pans.push(i as f32 / 200.0 - 2.0);
+}
+assert_eq!(ids.as_bytes().len(), 1625); // 13 bits each
+assert_eq!(pans.as_bytes().len(), 875); // 7 bits each
+```
+
 ## Features
 
 - Getters, setters and `with_` builders for every field, plus constants such as
@@ -50,9 +70,12 @@ Put `#[bitfields]` *before* `#[derive(...)]`.
 - Cyclic float fields (`wrap`) for angles and other quantities that wrap around.
 - Stochastic rounding, so that many small increments add up correctly even
   with few bits.
+- Packed vectors and slices of N-bit values (`PackedVec`, `PackedSlice`), and
+  struct-of-arrays tables generated from a `#[bitfields]` struct.
 - `Debug`, `Default`, `PartialOrd` and `Ord` that work field by field.
 - Clear compile errors for invalid declarations.
-- `#![no_std]`, no `unsafe` and no runtime dependencies.
+- `#![no_std]`, no `unsafe` and no runtime dependencies. `PackedVec` and
+  the struct-of-arrays tables need the optional `alloc` feature.
 
 See the [documentation](https://docs.rs/quantbits) for details.
 
