@@ -44,6 +44,19 @@ fn rows_round_trip() {
     assert_eq!(table.len(), 60);
     assert_eq!(table.iter().collect::<Vec<_>>(), rows);
     assert_eq!(table.iter().next_back(), Some(rows[59]));
+    assert_eq!(
+        (&table).into_iter().rev().collect::<Vec<_>>(),
+        rows.iter().rev().copied().collect::<Vec<_>>()
+    );
+    let mut it = table.iter();
+    assert_eq!((it.nth(5), it.nth_back(3), it.len()), (Some(rows[5]), Some(rows[56]), 50));
+    assert_eq!((it.clone().count(), it.last()), (50, Some(rows[55])));
+    let mut seen = 0;
+    for row in &table {
+        assert_eq!(row, rows[seen]);
+        seen += 1;
+    }
+    assert_eq!(seen, 60);
     assert_eq!(table.get(7), Some(rows[7]));
     assert_eq!(table.get(60), None);
 

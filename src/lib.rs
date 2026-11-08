@@ -70,6 +70,10 @@
 //! `BYTES` and `USED_BITS`. If a generated name collides with another one,
 //! the macro reports a compile error pointing at the field.
 //!
+//! The getters are inherent methods, so a field named like a trait method,
+//! e.g. `hash` or `clone`, takes precedence over it in method-call syntax.
+//! Call the trait method by its path instead, e.g. `Clone::clone(&p)`.
+//!
 //! All methods except the stochastic ones and those for [`BitEnum`] fields are
 //! `const fn`, so values can be built at compile time:
 //!
@@ -230,7 +234,46 @@
 //! assert_eq!(Weapon::BITS, 3);
 //! ```
 //!
-//! [`BitEnum`] can also be implemented by hand, e.g. for a newtype.
+//! [`BitEnum`] can also be implemented by hand, e.g. for a newtype, or to nest
+//! a `#[bitfields]` struct of at most 64 bits in another one through its
+//! [`Codec`] implementation:
+//!
+//! ```
+//! # use quantbits::bitfields;
+//! use quantbits::{BitEnum, Codec};
+//!
+//! #[bitfields]
+//! #[derive(Clone, Copy, PartialEq, Debug)]
+//! struct Color {
+//!     #[bits(5)] r: u8,
+//!     #[bits(6)] g: u8,
+//!     #[bits(5)] b: u8,
+//! }
+//!
+//! impl BitEnum for Color {
+//!     const BITS: u32 = Color::USED_BITS as u32;
+//!     fn into_bits(self) -> u64 {
+//!         <Self as Codec>::encode(self)
+//!     }
+//!     fn from_bits(bits: u64) -> Self {
+//!         <Self as Codec>::decode(bits) // ignores bits above `USED_BITS`
+//!     }
+//! }
+//!
+//! #[bitfields]
+//! #[derive(Clone, Copy)]
+//! struct Pixel {
+//!     #[bits(16)] color: Color,
+//!     visible: bool,
+//! }
+//!
+//! let p = Pixel::new().with_color(Color::new().with_g(40)).with_visible(true);
+//! assert_eq!(p.color().g(), 40);
+//! assert_eq!(Pixel::USED_BITS, 17);
+//! ```
+//!
+//! A derived `PartialOrd`/`Ord` of the outer struct compares a nested struct
+//! by its bits, not field by field.
 //!
 //! ## Packed vectors
 //!
@@ -312,15 +355,16 @@
 //! | Generated                                  | Meaning                                         |
 //! |--------------------------------------------|-------------------------------------------------|
 //! | `new`, `with_capacity`, `len`, `is_empty`, `reserve`, `clear`, `truncate` | as for `Vec`     |
-//! | `push(v)`, `pop()`, `get(i)`, `set(i, v)`, `iter()` | whole rows, as values of the struct    |
+//! | `push(v)`, `pop()`, `get(i)`, `set(i, v)`, `iter()` | whole rows, as values of the struct; `iter()` gives [`Rows`] |
 //! | `x(i)`, `set_x(i, v)`, `try_set_x(i, v)`   | one field of row `i`, like the struct's accessors |
 //! | `set_x_stochastic(i, v, rng)`, `add_x_stochastic(i, d, rng)`, `sub_x_stochastic(i, d, rng)` | floats |
 //! | `x_iter()`                                 | the field of every row                          |
 //! | `x_column()`                               | the column's raw bits as a [`PackedSlice`]      |
 //!
 //! It also implements `Clone`, `Default`, `PartialEq`, `Eq`, `Hash`,
-//! `Extend`, `FromIterator`, and `Debug` if the struct derives it. Methods
-//! taking an index panic if it is out of bounds, except `get`.
+//! `Extend`, `FromIterator`, `IntoIterator` for `&Name` (so `for row in &table`
+//! works), and `Debug` if the struct derives it. Methods taking an index panic
+//! if it is out of bounds, except `get`.
 //!
 //! ## Compile errors
 //!
@@ -332,6 +376,7 @@
 //! for every case and the exact messages.
 
 #![no_std]
+#![forbid(unsafe_code)]
 
 // Makes `::quantbits::...` in generated code work inside this crate as well.
 extern crate self as quantbits;
@@ -344,12 +389,42 @@ pub use quantbits_derive::{bitfields, codec, BitEnum};
 mod codec;
 mod packed;
 #[cfg(feature = "alloc")]
+mod table;
+#[cfg(feature = "alloc")]
 mod vec;
 
 pub use codec::{Codec, Int, StochasticCodec};
 pub use packed::{Iter, PackedSlice, PackedSliceMut};
 #[cfg(feature = "alloc")]
+pub use table::Rows;
+#[cfg(feature = "alloc")]
 pub use vec::PackedVec;
+
+// Wraps the code for `#[bitfields(columns = ...)]`, so that a missing `alloc`
+// feature gives one clear error instead of unresolved `PackedVec`s.
+#[cfg(feature = "alloc")]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __require_alloc {
+    ($($items:tt)*) => { $($items)* };
+}
+
+#[cfg(not(feature = "alloc"))]
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __require_alloc {
+    ($($items:tt)*) => {
+        ::core::compile_error!(
+            "`#[bitfields(columns = ...)]` needs the `alloc` feature: \
+             `quantbits = { version = \"0.1\", features = [\"alloc\"] }`"
+        );
+    };
+}
+
+// Compiles the examples in the README. The second one needs `alloc`.
+#[cfg(all(doctest, feature = "alloc"))]
+#[doc = include_str!("../README.md")]
+pub struct ReadmeDoctests;
 
 /// The distance between two adjacent levels of a float field.
 ///
@@ -375,6 +450,14 @@ pub const fn step(min: f64, max: f64, bits: u32, inclusive: bool) -> f64 {
 /// A manual implementation must return a value from `into_bits` that fits in
 /// `BITS` bits, and `from_bits` must handle every value that fits in the
 /// field, since `from_bytes` can produce arbitrary bits.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` does not implement `quantbits::BitEnum`",
+    label = "unsupported field type",
+    note = "a field can be an integer, `bool`, a float with `range`, or a type with \
+            `#[derive(quantbits::BitEnum)]`",
+    note = "`#[bitfields]` only sees type names, so an alias such as `type Id = u16;` is not \
+            recognized as `u16`; write `u16` directly"
+)]
 pub trait BitEnum: Sized {
     /// The smallest number of bits that holds every value.
     const BITS: u32;
@@ -476,6 +559,9 @@ impl core::error::Error for OutOfRange {}
 /// Helpers for the generated code. Not part of the public API.
 #[doc(hidden)]
 pub mod __private {
+    #[cfg(feature = "alloc")]
+    pub use crate::table::{rows, Table};
+
     /// A mask with `bits` ones in the lowest bits (1..=64).
     #[inline(always)]
     pub const fn mask(bits: u32) -> u64 {

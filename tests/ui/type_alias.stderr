@@ -1,0 +1,9 @@
+error[E0277]: `u16` does not implement `quantbits::BitEnum`
+ --> tests/ui/type_alias.rs:6:9
+  |
+6 |     id: Id,
+  |         ^^ unsupported field type
+  |
+  = help: the trait `BitEnum` is not implemented for `u16`
+  = note: a field can be an integer, `bool`, a float with `range`, or a type with `#[derive(quantbits::BitEnum)]`
+  = note: `#[bitfields]` only sees type names, so an alias such as `type Id = u16;` is not recognized as `u16`; write `u16` directly

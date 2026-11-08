@@ -258,3 +258,39 @@ fn inclusive_range_hits_both_endpoints_exactly() {
     e.set_d(0.1);
     assert_eq!((e.a(), e.b(), e.c(), e.d()), (0.3, 0.3, -0.1, 0.1));
 }
+
+// `macro_rules!` passes `$t:ty` and `$e:expr` to proc macros in invisible groups.
+macro_rules! declare_struct {
+    ($name:ident, $int:ty, $bits:expr, $float:ty, $range:expr) => {
+        #[bitfields]
+        #[derive(Clone, Copy)]
+        struct $name {
+            #[bits($bits)]
+            a: $int,
+            #[bits(4, range = $range)]
+            b: $float,
+            c: $int,
+        }
+    };
+}
+
+macro_rules! declare_codec {
+    ($name:ident, $ty:ty, $bits:expr) => {
+        #[quantbits::codec($bits)]
+        type $name = $ty;
+    };
+}
+
+declare_struct!(FromMacro, u16, 10, f32, 0.0..1.0);
+declare_codec!(CodecFromMacro, i8, 5);
+
+#[test]
+fn macro_fragments() {
+    use quantbits::Codec;
+
+    let m = FromMacro::new().with_a(1000).with_b(0.5).with_c(u16::MAX);
+    assert_eq!((m.a(), m.b(), m.c()), (1000, 0.5, u16::MAX));
+    assert_eq!((FromMacro::A_BITS, FromMacro::B_BITS, FromMacro::C_BITS), (10, 4, 16));
+    assert_eq!(CodecFromMacro::BITS, 5);
+    assert_eq!(CodecFromMacro::decode(CodecFromMacro::encode(-16)), -16);
+}
