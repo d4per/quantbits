@@ -291,7 +291,7 @@
 //! | a type declared with [`codec`] | anything a field can hold, with the same arguments as `#[bits(...)]` |
 //!
 //! `PackedVec` is a growable vector and needs the `alloc` feature
-//! (`quantbits = { version = "0.1", features = ["alloc"] }`). The slices work
+//! (`quantbits = { version = "0.2", features = ["alloc"] }`). The slices work
 //! on a borrowed byte buffer without an allocator.
 //!
 //! ```
@@ -416,7 +416,7 @@ macro_rules! __require_alloc {
     ($($items:tt)*) => {
         ::core::compile_error!(
             "`#[bitfields(columns = ...)]` needs the `alloc` feature: \
-             `quantbits = { version = \"0.1\", features = [\"alloc\"] }`"
+             `quantbits = { version = \"0.2\", features = [\"alloc\"] }`"
         );
     };
 }

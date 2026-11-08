@@ -7,7 +7,7 @@ the total size; each individual field can be 1–64 bits.
 
 ```toml
 [dependencies]
-quantbits = "0.1"
+quantbits = "0.2"
 ```
 
 ```rust
