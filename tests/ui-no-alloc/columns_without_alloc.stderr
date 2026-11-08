@@ -1,4 +1,4 @@
-error: `#[bitfields(columns = ...)]` needs the `alloc` feature: `quantbits = { version = "0.1", features = ["alloc"] }`
+error: `#[bitfields(columns = ...)]` needs the `alloc` feature: `quantbits = { version = "0.2", features = ["alloc"] }`
  --> tests/ui-no-alloc/columns_without_alloc.rs:3:23
   |
 3 | #[bitfields(columns = Particles)]
