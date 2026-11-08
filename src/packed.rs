@@ -149,6 +149,18 @@ impl<'a, C: Codec> PackedSlice<'a, C> {
         (index < self.len).then(|| read_at(self.bytes, index * bits as usize, bits))
     }
 
+    /// The first value, or `None` if empty.
+    #[inline]
+    pub fn first(&self) -> Option<C::Value> {
+        self.get(0)
+    }
+
+    /// The last value, or `None` if empty.
+    #[inline]
+    pub fn last(&self) -> Option<C::Value> {
+        self.get(self.len.checked_sub(1)?)
+    }
+
     /// An iterator over the values.
     #[inline]
     pub fn iter(&self) -> Iter<'a, C> {
@@ -239,6 +251,18 @@ impl<'a, C: Codec> PackedSliceMut<'a, C> {
     #[inline]
     pub fn get_raw(&self, index: usize) -> Option<u64> {
         self.as_slice().get_raw(index)
+    }
+
+    /// The first value, or `None` if empty.
+    #[inline]
+    pub fn first(&self) -> Option<C::Value> {
+        self.as_slice().first()
+    }
+
+    /// The last value, or `None` if empty.
+    #[inline]
+    pub fn last(&self) -> Option<C::Value> {
+        self.as_slice().last()
     }
 
     /// An iterator over the values.
@@ -382,6 +406,16 @@ impl<C: Codec> Iterator for Iter<'_, C> {
         self.front = self.front.saturating_add(n).min(self.back);
         self.next()
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.back - self.front
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<C::Value> {
+        self.next_back()
+    }
 }
 
 impl<C: Codec> DoubleEndedIterator for Iter<'_, C> {
@@ -393,6 +427,12 @@ impl<C: Codec> DoubleEndedIterator for Iter<'_, C> {
         self.back -= 1;
         let bits = Width::<C>::BITS;
         Some(C::decode(read_at(self.bytes, self.back * bits as usize, bits)))
+    }
+
+    #[inline]
+    fn nth_back(&mut self, n: usize) -> Option<C::Value> {
+        self.back = self.back.saturating_sub(n).max(self.front);
+        self.next_back()
     }
 }
 

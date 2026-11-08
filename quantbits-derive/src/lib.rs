@@ -1,6 +1,8 @@
 //! Procedural macros for `quantbits`. Use them via `quantbits::bitfields`,
 //! `quantbits::codec` and `quantbits::BitEnum`, not directly.
 
+#![forbid(unsafe_code)]
+
 use std::collections::HashMap;
 
 use proc_macro::TokenStream;
@@ -105,7 +107,7 @@ impl Parse for BitsArgs {
                     return Err(Error::new(key.span(), "`range` may only be given once"));
                 }
                 input.parse::<Token![=]>()?;
-                match input.parse::<Expr>()? {
+                match strip_expr_groups(input.parse::<Expr>()?) {
                     Expr::Range(r) => range = Some(r),
                     other => {
                         return Err(Error::new_spanned(
@@ -197,8 +199,31 @@ enum Prim {
     Custom,
 }
 
+/// `ty` without parentheses and the invisible groups that `macro_rules!`
+/// puts around a `$t:ty`.
+fn strip_type_groups(mut ty: &Type) -> &Type {
+    loop {
+        match ty {
+            Type::Group(g) => ty = &g.elem,
+            Type::Paren(p) => ty = &p.elem,
+            _ => return ty,
+        }
+    }
+}
+
+/// Like [`strip_type_groups`], for a `$e:expr`.
+fn strip_expr_groups(mut expr: Expr) -> Expr {
+    loop {
+        match expr {
+            Expr::Group(g) => expr = *g.expr,
+            Expr::Paren(p) => expr = *p.expr,
+            _ => return expr,
+        }
+    }
+}
+
 fn classify(ty: &Type) -> Option<Prim> {
-    let Type::Path(tp) = ty else { return None };
+    let Type::Path(tp) = strip_type_groups(ty) else { return None };
     if tp.qself.is_some() {
         return None;
     }
@@ -1209,7 +1234,7 @@ fn expand_columns(
         }
     });
 
-    Ok(quote! {
+    let items = quote! {
         #[doc = #doc]
         #[derive(Clone, Default, PartialEq, Eq, Hash)]
         #vis struct #columns {
@@ -1289,10 +1314,9 @@ fn expand_columns(
             }
 
             /// An iterator over the rows.
-            pub fn iter(
-                &self,
-            ) -> impl ::core::iter::ExactSizeIterator<Item = #name> + ::core::iter::DoubleEndedIterator + '_ {
-                (0..self.len()).map(move |index| self.__row(index))
+            #[inline]
+            pub fn iter(&self) -> ::quantbits::Rows<'_, Self> {
+                #p::rows(self)
             }
 
             #[inline]
@@ -1303,6 +1327,30 @@ fn expand_columns(
             }
 
             #(#methods)*
+        }
+
+        impl #p::Table for #columns {
+            type Row = #name;
+
+            #[inline]
+            fn __len(&self) -> usize {
+                self.len()
+            }
+
+            #[inline]
+            fn __row(&self, index: usize) -> #name {
+                #columns::__row(self, index)
+            }
+        }
+
+        impl<'a> ::core::iter::IntoIterator for &'a #columns {
+            type Item = #name;
+            type IntoIter = ::quantbits::Rows<'a, #columns>;
+
+            #[inline]
+            fn into_iter(self) -> ::quantbits::Rows<'a, #columns> {
+                self.iter()
+            }
         }
 
         impl ::core::iter::Extend<#name> for #columns {
@@ -1324,7 +1372,10 @@ fn expand_columns(
         }
 
         #debug_impl
-    })
+    };
+    // Expands to `items` only with the `alloc` feature, and otherwise to an
+    // error pointing at `Name`.
+    Ok(quote_spanned!(columns.span()=> ::quantbits::__require_alloc! { #items }))
 }
 
 // ---------------------------------------------------------------------------
@@ -1491,9 +1542,14 @@ fn expand_bit_enum(item: DeriveInput) -> Result<TokenStream2> {
     let count = variants.len() as u64;
     let enum_trait = quote!(::quantbits::BitEnum);
 
-    let non_negative = variants.iter().map(|v| {
-        let msg = format!("quantbits: `{name_str}::{v}` has a negative discriminant");
-        quote_spanned!(v.span()=> ::core::assert!((#name::#v as i128) >= 0, #msg);)
+    // `as u64` below would silently truncate larger discriminants of a `#[repr(u128)]` enum.
+    let discriminant_checks = variants.iter().map(|v| {
+        let negative = format!("quantbits: `{name_str}::{v}` has a negative discriminant");
+        let too_large = format!("quantbits: `{name_str}::{v}` has a discriminant larger than u64::MAX");
+        quote_spanned! {v.span()=>
+            ::core::assert!((#name::#v as i128) >= 0, #negative);
+            ::core::assert!((#name::#v as u128) <= u64::MAX as u128, #too_large);
+        }
     });
 
     // Without a fallback every bit pattern must correspond to a variant. The
@@ -1557,7 +1613,7 @@ fn expand_bit_enum(item: DeriveInput) -> Result<TokenStream2> {
             }
         }
 
-        const _: () = { #(#non_negative)* };
+        const _: () = { #(#discriminant_checks)* };
         #exhaustive_check
     })
 }

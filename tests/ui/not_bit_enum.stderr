@@ -1,5 +1,9 @@
-error[E0277]: the trait bound `String: BitEnum` is not satisfied
+error[E0277]: `String` does not implement `quantbits::BitEnum`
  --> tests/ui/not_bit_enum.rs:4:8
   |
 4 |     s: String,
-  |        ^^^^^^ the trait `BitEnum` is not implemented for `String`
+  |        ^^^^^^ unsupported field type
+  |
+  = help: the trait `BitEnum` is not implemented for `String`
+  = note: a field can be an integer, `bool`, a float with `range`, or a type with `#[derive(quantbits::BitEnum)]`
+  = note: `#[bitfields]` only sees type names, so an alias such as `type Id = u16;` is not recognized as `u16`; write `u16` directly

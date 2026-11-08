@@ -171,6 +171,71 @@ fn iterator_is_exact_and_double_ended() {
     assert_eq!(it.nth(100), None);
     assert_eq!(it.next(), None);
     assert_eq!((&v).into_iter().sum::<u8>(), 45);
+
+    let mut it = v.iter();
+    assert_eq!(it.nth_back(2), Some(7));
+    assert_eq!(it.clone().count(), 7);
+    assert_eq!(it.clone().last(), Some(6));
+    assert_eq!(it.nth_back(100), None);
+    assert_eq!(it.next(), None);
+    assert_eq!((v.first(), v.last()), (Some(0), Some(9)));
+    assert_eq!((v.as_slice().first(), v.as_slice().last()), (Some(0), Some(9)));
+    let empty: PackedVec<Int<u8, 7>> = PackedVec::new();
+    assert_eq!((empty.first(), empty.last(), empty.iter().last()), (None, None, None));
+}
+
+/// `insert`, `remove`, `swap_remove` and `resize` against the same calls on a
+/// `Vec`, for widths with and without whole bytes.
+fn check_editing<C: Codec<Value = u64>>(rng: &mut SplitMix64, bits: u32) {
+    let mut packed: PackedVec<C> = PackedVec::new();
+    let mut plain: Vec<u64> = Vec::new();
+    for _ in 0..300 {
+        let value = if rng.next_u64() % 4 == 0 { 0 } else { random_bits(rng, bits).0 };
+        let len = plain.len();
+        let index = rng.next_u64() as usize % (len + 1);
+        match rng.next_u64() % 5 {
+            0 | 1 => {
+                packed.insert(index, value);
+                plain.insert(index, value);
+            }
+            2 if index < len => assert_eq!(packed.remove(index), plain.remove(index)),
+            3 if index < len => assert_eq!(packed.swap_remove(index), plain.swap_remove(index)),
+            _ => {
+                let new_len = rng.next_u64() as usize % (len + 6);
+                packed.resize(new_len, value);
+                plain.resize(new_len, value);
+            }
+        }
+        assert_eq!(packed.iter().collect::<Vec<_>>(), plain, "{bits} bits");
+        // The bits after the last value stay zero, so the bytes compare equal.
+        assert_eq!(packed, plain.iter().copied().collect::<PackedVec<C>>(), "{bits} bits");
+    }
+}
+
+#[test]
+fn editing_matches_a_plain_vec() {
+    let mut rng = SplitMix64::new(11);
+    check_editing::<Int<u64, 1>>(&mut rng, 1);
+    check_editing::<Int<u64, 7>>(&mut rng, 7);
+    check_editing::<Int<u64, 8>>(&mut rng, 8);
+    check_editing::<Int<u64, 13>>(&mut rng, 13);
+    check_editing::<Int<u64, 16>>(&mut rng, 16);
+    check_editing::<Int<u64, 58>>(&mut rng, 58);
+    check_editing::<Int<u64, 64>>(&mut rng, 64);
+}
+
+#[test]
+#[should_panic(expected = "the len is 2 but the index is 3")]
+fn insert_past_the_end_panics() {
+    let mut v: PackedVec<Int<u8, 3>> = [1, 2].into_iter().collect();
+    v.insert(3, 0);
+}
+
+#[test]
+#[should_panic(expected = "the len is 2 but the index is 2")]
+fn remove_out_of_bounds_panics() {
+    let mut v: PackedVec<Int<u8, 3>> = [1, 2].into_iter().collect();
+    v.remove(2);
 }
 
 // ---------------------------------------------------------------------------

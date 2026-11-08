@@ -6,6 +6,7 @@ use core::hash::{Hash, Hasher};
 use core::marker::PhantomData;
 use core::ops::Neg;
 
+use crate::__private::{index_out_of_bounds, mask};
 use crate::packed::{byte_len, read_at, write_at, Width};
 use crate::{Codec, Iter, OutOfRange, PackedSlice, PackedSliceMut, RandomBits, StochasticCodec};
 
@@ -147,13 +148,74 @@ impl<C: Codec> PackedVec<C> {
     pub fn resize(&mut self, len: usize, value: C::Value) {
         if len <= self.len {
             self.truncate(len);
-        } else {
-            let raw = C::encode(value);
-            self.reserve(len - self.len);
-            while self.len < len {
-                self.push_raw(raw);
+            return;
+        }
+        let raw = C::encode(value);
+        let bits = Width::<C>::BITS;
+        let bytes = byte_len(len, bits).unwrap_or_else(|| capacity_overflow());
+        self.bytes.resize(bytes, 0);
+        // The new bytes are zero, so a value of zero needs no writes.
+        if raw & mask(bits) != 0 {
+            for index in self.len..len {
+                write_at(&mut self.bytes, index * bits as usize, bits, raw);
             }
         }
+        self.len = len;
+    }
+
+    /// Inserts a value at `index`, moving the values after it one position
+    /// back. Panics if `index > len`.
+    #[track_caller]
+    pub fn insert(&mut self, index: usize, value: C::Value) {
+        if index > self.len {
+            index_out_of_bounds(index, self.len);
+        }
+        let raw = C::encode(value);
+        let bits = Width::<C>::BITS;
+        self.push_raw(0);
+        if bits % 8 == 0 {
+            let b = bits as usize / 8;
+            self.bytes.copy_within(index * b..(self.len - 1) * b, (index + 1) * b);
+        } else {
+            for i in (index + 1..self.len).rev() {
+                let moved = read_at(&self.bytes, (i - 1) * bits as usize, bits);
+                write_at(&mut self.bytes, i * bits as usize, bits, moved);
+            }
+        }
+        write_at(&mut self.bytes, index * bits as usize, bits, raw);
+    }
+
+    /// Removes and returns the value at `index`, moving the values after it
+    /// one position forward. Panics if `index` is out of bounds.
+    #[track_caller]
+    pub fn remove(&mut self, index: usize) -> C::Value {
+        let Some(raw) = self.get_raw(index) else { index_out_of_bounds(index, self.len) };
+        let bits = Width::<C>::BITS;
+        if bits % 8 == 0 {
+            let b = bits as usize / 8;
+            self.bytes.copy_within((index + 1) * b.., index * b);
+        } else {
+            for i in index + 1..self.len {
+                let moved = read_at(&self.bytes, i * bits as usize, bits);
+                write_at(&mut self.bytes, (i - 1) * bits as usize, bits, moved);
+            }
+        }
+        self.truncate(self.len - 1);
+        C::decode(raw)
+    }
+
+    /// Removes and returns the value at `index`, replacing it with the last
+    /// value. Unlike [`remove`](Self::remove) this takes constant time, but
+    /// changes the order. Panics if `index` is out of bounds.
+    #[track_caller]
+    pub fn swap_remove(&mut self, index: usize) -> C::Value {
+        let Some(raw) = self.get_raw(index) else { index_out_of_bounds(index, self.len) };
+        let bits = Width::<C>::BITS;
+        let last = self.len - 1;
+        let moved = read_at(&self.bytes, last * bits as usize, bits);
+        write_at(&mut self.bytes, index * bits as usize, bits, moved);
+        self.truncate(last);
+        C::decode(raw)
     }
 
     /// The value at `index`, or `None` if out of bounds.
@@ -167,6 +229,18 @@ impl<C: Codec> PackedVec<C> {
     #[inline]
     pub fn get_raw(&self, index: usize) -> Option<u64> {
         self.as_slice().get_raw(index)
+    }
+
+    /// The first value, or `None` if empty.
+    #[inline]
+    pub fn first(&self) -> Option<C::Value> {
+        self.as_slice().first()
+    }
+
+    /// The last value, or `None` if empty.
+    #[inline]
+    pub fn last(&self) -> Option<C::Value> {
+        self.as_slice().last()
     }
 
     /// Sets the value at `index`, see [`Codec::encode`] for values that do not
